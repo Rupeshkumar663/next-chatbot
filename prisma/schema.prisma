@@ -4,27 +4,29 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider="prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider="mongodb"
-  url     =env("DATABASE_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 model Chat {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
-  title     String
-  messages  Message[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages Message[]
 }
 
 model Message {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  role      String
-  content   String
-  chatId    String   @db.ObjectId
-  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  role    String
+  content String
+
   createdAt DateTime @default(now())
+
+  chatId String @db.ObjectId
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }

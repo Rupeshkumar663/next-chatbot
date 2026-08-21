@@ -1,42 +1,65 @@
 import { NextResponse } from "next/server";
 import { generate } from "@/lib/ai";
 import { prisma } from "@/lib/prisma";
+
 export async function POST(req:Request){
-    try {
-        const {message,threadId}:{message:string,threadId?:string}=await req.json();
+    try{
+        const body=await req.json();
+        const message=body.message?.trim();
+        let threadId=body.threadId;
         if(!message){
             return NextResponse.json({error:"Message is required"},{status:400});
         }
-        let currentThreadId=threadId;
-        if(!currentThreadId){
+        
+        //Create a new chat if no thread exists--------------------
+        if(!threadId){
             const chat=await prisma.chat.create({
-                    data:{
-                        title:message.slice(0,50)
-                     }
-                });
-            currentThreadId=chat.id;
+                data:{}
+            });
+            threadId=chat.id;
         }
 
+        //Save user message------------------
         await prisma.message.create({
             data:{
                 role:"user",
                 content:message,
-                chatId:currentThreadId
+                chatId:threadId
             }
         });
-        const result=await generate(message,currentThreadId);
+
+        //Get complete conversation history-----------------
+        const history=await prisma.message.findMany({
+            where:{
+                chatId:threadId
+            },
+            orderBy:{
+                createdAt:"asc"
+            },
+            select:{
+                role:true,
+                content:true
+            }
+        });
+
+        //Generate AI response using database history-----------------------
+        const result=await generate(history.map((item)=>({
+                role:item.role as "user" | "assistant",
+                content:item.content
+            }))
+        );
+
+        //Save assistant response------------------------------
         await prisma.message.create({
             data:{
                 role:"assistant",
                 content:result,
-                chatId:currentThreadId
+                chatId:threadId
             }
         });
-        return NextResponse.json({message:result,threadId:currentThreadId});
-    } catch(error:unknown){
-        console.error(error);
-        const errorMessage=error instanceof Error? error.message:"Server Error";
-        return NextResponse.json({error:errorMessage},{status:500}
-        );
+        return NextResponse.json({message:result,threadId});
+    } catch(error){
+        console.error("Chat API error:",error);
+        return NextResponse.json({error:"Something went wrong. Please try again."},{status:500});
     }
 }

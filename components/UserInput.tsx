@@ -36,7 +36,7 @@ function UserInput({generate,loading}:UserInputProps){
         }
     };
     return (
-        <div className="fixed bottom-0 left-0 w-full bg-[#212121] pb-5">
+        <div className="fixed bottom-0 left-0 w-full bg-[#212121] pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
             <div className="max-w-3xl mx-auto px-4">
                 <div className="rounded-3xl  border border-neutral-700 bg-[#303030] px-4 py-3">
                     <textarea
@@ -47,7 +47,7 @@ function UserInput({generate,loading}:UserInputProps){
                         onChange={(e)=>setInput(e.target.value)}
                         onInput={handleResize}
                         onKeyDown={handleEnter}
-                        className="w-full resize-none bg-transparent outline-none text-white placeholder:text-gray-400"
+                       className="w-full resize-none bg-transparent outline-none text-white placeholder:text-gray-400 text-base"
                         style={{minHeight:"24px",maxHeight:"120px"}}
                     />
                     <div className="flex justify-end mt-3">

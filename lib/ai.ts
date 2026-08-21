@@ -1,6 +1,5 @@
 import Groq from "groq-sdk";
 import { tavily } from "@tavily/core";
-import NodeCache from "node-cache";
 
 if(!process.env.GROQ_API_KEY){
     throw new Error("GROQ_API_KEY is missing");
@@ -20,9 +19,6 @@ const tvly=tavily({
 
 type Message=Groq.Chat.Completions.ChatCompletionMessageParam;
 type SearchParams={query:string};
-
-//Caching for store message of llm--------------------
-const myCache=new NodeCache({stdTTL:60*60*24});
 
 
 let selectedModel:string | null=null;
@@ -53,7 +49,12 @@ async function getGroqModel():Promise<string>{
 
 
 //llm response----------------------
-export async function generate(userMessage:string,threadId:string):Promise<string>{
+type ChatHistory={
+    role:"user" | "assistant";
+    content:string;
+};
+
+export async function generate(history:ChatHistory[]):Promise<string>{
     const baseMessages:Message[]=[
         {
             role:"system",
@@ -179,12 +180,13 @@ export async function generate(userMessage:string,threadId:string):Promise<strin
             }
      ];
 
-    const cachedMessages=myCache.get(threadId) as Message[] | undefined;
-    const messages:Message[]=cachedMessages? [...cachedMessages]:[...baseMessages];
-    messages.push({
-        role:"user",
-        content: userMessage,
-    });
+    const messages:Message[]=[
+      ...baseMessages,
+      ...history.map((message)=>({
+          role:message.role,
+          content: message.content,
+       }))
+     ];
     const model=await getGroqModel();
     while(true){
         const completion=await groq.chat.completions.create({
@@ -220,7 +222,6 @@ export async function generate(userMessage:string,threadId:string):Promise<strin
         const toolCalls=assistantMessage.tool_calls;
         if(!toolCalls ||toolCalls.length===0){
             const final_Result=assistantMessage.content || "Sorry, I could not generate a response.";
-            myCache.set(threadId,messages);
             return final_Result;
         }
 
